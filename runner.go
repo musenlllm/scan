@@ -7,27 +7,28 @@ import (
 	"BeeScan-scan/pkg/job"
 	log2 "BeeScan-scan/pkg/log"
 	"BeeScan-scan/pkg/result"
-	"BeeScan-scan/pkg/scan/cdncheck"
 	"BeeScan-scan/pkg/scan/fringerprint"
 	"BeeScan-scan/pkg/scan/getipbydomain"
 	"BeeScan-scan/pkg/scan/gonmap"
 	"BeeScan-scan/pkg/scan/httpcheck"
 	"BeeScan-scan/pkg/scan/icmp"
 	"BeeScan-scan/pkg/scan/ipinfo"
+	"BeeScan-scan/pkg/scan/ping"
 	"BeeScan-scan/pkg/scan/tcp"
 	"BeeScan-scan/pkg/util"
 	"fmt"
-	redis2 "github.com/go-redis/redis"
-	"github.com/projectdiscovery/hmap/store/hybrid"
+	"log"
 	"net"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
+
+	redis2 "github.com/go-redis/redis"
+	"github.com/projectdiscovery/hmap/store/hybrid"
 )
 
 /*
-创建人员：云深不知处
-创建时间：2022/1/30
 程序功能：运行实例
 */
 
@@ -102,11 +103,9 @@ func (r *Runner) Request() result.FingerResult {
 retry:
 	if r.Domain != "" && r.Port != "80" {
 		fullUrl = fmt.Sprintf("%s://%s:%s", protocol, r.Domain, r.Port)
-	} else if r.Ip != "" && r.Port != "80" {
+	} else if r.Port != "80" {
 		fullUrl = fmt.Sprintf("%s://%s:%s", protocol, r.Ip, r.Port)
-	} else if r.Domain != "" && r.Port == "80" {
-		fullUrl = fmt.Sprintf("%s://%s", protocol, r.Domain)
-	} else if r.Ip != "" && r.Port == "80" {
+	} else {
 		fullUrl = fmt.Sprintf("%s://%s", protocol, r.Ip)
 	}
 	timeStart := time.Now()
@@ -270,38 +269,30 @@ func HandleTargets(queue *job.Queue, fofaPrints *fringerprint.FofaPrints) []*Run
 							var runner2 *Runner
 							var err1 error
 							if strings.Contains(t, "com") || strings.Contains(t, "cn") {
-								ip, err := getipbydomain.GetIPbyDomain(t)
-								if err == nil {
-									runner2, err1 = NewRunner(ip, target[2], t, "udp", fofaPrints)
-								}
+								ip := getipbydomain.GetIPbyDomain(t)
+								runner2, err1 = NewRunner(ip, target[2], t, "udp", fofaPrints)
 							} else {
 								runner2, err1 = NewRunner(t, target[2], "", "udp", fofaPrints)
 							}
 							if err1 != nil {
 								log2.Error("[HandleTargets]:", err1)
 							}
-							if runner2 != nil {
-								runners = append(runners, runner2)
-							}
+							runners = append(runners, runner2)
 						}
 					} else {
 						for _, t := range tmptarget {
 							var runner2 *Runner
 							var err1 error
 							if strings.Contains(t, "com") || strings.Contains(t, "cn") {
-								ip, err := getipbydomain.GetIPbyDomain(t)
-								if err == nil {
-									runner2, err1 = NewRunner(ip, target[1], t, "tcp", fofaPrints)
-								}
+								ip := getipbydomain.GetIPbyDomain(t)
+								runner2, err1 = NewRunner(ip, target[1], t, "tcp", fofaPrints)
 							} else {
 								runner2, err1 = NewRunner(t, target[1], "", "tcp", fofaPrints)
 							}
 							if err1 != nil {
 								log2.Error("[HandleTargets]:", err1)
 							}
-							if runner2 != nil {
-								runners = append(runners, runner2)
-							}
+							runners = append(runners, runner2)
 						}
 					}
 
@@ -316,38 +307,30 @@ func HandleTargets(queue *job.Queue, fofaPrints *fringerprint.FofaPrints) []*Run
 							var runner2 *Runner
 							var err1 error
 							if strings.Contains(t, "com") || strings.Contains(t, "cn") {
-								ip, err := getipbydomain.GetIPbyDomain(t)
-								if err == nil {
-									runner2, err1 = NewRunner(ip, target[1], t, "udp", fofaPrints)
-								}
+								ip := getipbydomain.GetIPbyDomain(t)
+								runner2, err1 = NewRunner(ip, target[1], t, "udp", fofaPrints)
 							} else {
 								runner2, err1 = NewRunner(t, target[1], "", "udp", fofaPrints)
 							}
 							if err1 != nil {
 								log2.Error("[HandleTargets]:", err1)
 							}
-							if runner2 != nil {
-								runners = append(runners, runner2)
-							}
+							runners = append(runners, runner2)
 						}
 					} else {
 						for _, t := range tmptarget {
 							var runner2 *Runner
 							var err1 error
 							if strings.Contains(t, "com") || strings.Contains(t, "cn") {
-								ip, err := getipbydomain.GetIPbyDomain(t)
-								if err == nil {
-									runner2, err1 = NewRunner(ip, target[1], t, "tcp", fofaPrints)
-								}
+								ip := getipbydomain.GetIPbyDomain(t)
+								runner2, err1 = NewRunner(ip, target[1], t, "tcp", fofaPrints)
 							} else {
 								runner2, err1 = NewRunner(t, target[1], "", "tcp", fofaPrints)
 							}
 							if err1 != nil {
 								log2.Error("[HandleTargets]:", err1)
 							}
-							if runner2 != nil {
-								runners = append(runners, runner2)
-							}
+							runners = append(runners, runner2)
 						}
 					}
 
@@ -362,39 +345,30 @@ func HandleTargets(queue *job.Queue, fofaPrints *fringerprint.FofaPrints) []*Run
 							var runner2 *Runner
 							var err1 error
 							if strings.Contains(t, "com") || strings.Contains(t, "cn") {
-								ip, err := getipbydomain.GetIPbyDomain(t)
-								if err == nil {
-									runner2, err1 = NewRunner(ip, target[1], t, "udp", fofaPrints)
-								}
+								ip := getipbydomain.GetIPbyDomain(t)
+								runner2, err1 = NewRunner(ip, target[1], t, "udp", fofaPrints)
 							} else {
 								runner2, err1 = NewRunner(t, target[1], "", "udp", fofaPrints)
 							}
 							if err1 != nil {
 								log2.Error("[HandleTargets]:", err1)
 							}
-							if runner2 != nil {
-								runners = append(runners, runner2)
-							}
+							runners = append(runners, runner2)
 						}
 					} else {
 						for _, t := range tmptarget {
 							var runner2 *Runner
 							var err1 error
 							if strings.Contains(t, "com") || strings.Contains(t, "cn") {
-								ip, err := getipbydomain.GetIPbyDomain(t)
-								if err == nil {
-									runner2, err1 = NewRunner(ip, target[1], t, "tcp", fofaPrints)
-								}
-
+								ip := getipbydomain.GetIPbyDomain(t)
+								runner2, err1 = NewRunner(ip, target[1], t, "tcp", fofaPrints)
 							} else {
 								runner2, err1 = NewRunner(t, target[1], "", "tcp", fofaPrints)
 							}
 							if err1 != nil {
 								log2.Error("[HandleTargets]:", err1)
 							}
-							if runner2 != nil {
-								runners = append(runners, runner2)
-							}
+							runners = append(runners, runner2)
 						}
 					}
 				}
@@ -408,119 +382,220 @@ func HandleTargets(queue *job.Queue, fofaPrints *fringerprint.FofaPrints) []*Run
 	return nil
 }
 
-// Scan 扫描函数
+// // Scan 扫描函数
+// func Scan(target *Runner, GoNmap *gonmap.VScan, region *ipinfo.Ip2Region) *result.Output {
+// 	// 域名存在与否
+// 	if target.Domain != "" {
+// 		// 主机存活探测
+// 		if icmp.IcmpCheckAlive(target.Domain, target.Ip) || ping.PingCheckAlive(target.Domain) || httpcheck.HttpCheck(target.Domain, target.Port, target.Ip) || tcp.TcpCheckAlive(target.Ip, target.Port) {
+
+// 			if tcp.TcpCheckAlive(target.Ip, target.Port) || httpcheck.HttpCheck(target.Domain, target.Port, target.Ip) {
+// 				// 普通端口探测
+// 				nmapbanner, err := gonmap.GoNmapScan(GoNmap, target.Ip, target.Port, target.Protocol)
+// 				if nmapbanner != nil {
+// 					target.Output.Servers = nmapbanner
+// 				}
+// 				if strings.Contains(target.Output.Servers.Banner, "HTTP") {
+// 					target.Output.Servers.Name = "http"
+// 					target.Output.Servername = "http"
+// 				} else {
+// 					target.Output.Servername = nmapbanner.Name
+
+// 				}
+// 				// web端口探测
+// 				webresult := result.FingerResult{}
+// 				if target.Output.Servername == "http" {
+// 					webresult = target.Request()
+// 				}
+// 				target.Output.Webbanner = webresult
+// 				target.Output.Ip = target.Ip
+// 				target.Output.Port = target.Port
+// 				target.Output.Protocol = strings.ToUpper(target.Protocol)
+// 				target.Output.Domain = target.Domain
+
+// 				if webresult.Header != "" {
+// 					target.Output.Banner = target.Output.Webbanner.Header
+// 				} else {
+// 					target.Output.Banner = nmapbanner.Banner
+// 				}
+// 				// ip信息查询
+// 				info, err := ipinfo.GetIpinfo(region, target.Ip)
+// 				if err != nil {
+// 					log2.Warn("[GetIPInfo]:", err)
+// 				}
+// 				target.Output.City = info.City
+// 				target.Output.Region = info.Region
+// 				target.Output.ISP = info.ISP
+// 				target.Output.CityId = info.CityId
+// 				target.Output.Province = info.Province
+// 				target.Output.Country = info.Country
+// 				target.Output.TargetId = target.Ip + "-" + target.Port + "-" + target.Domain
+// 				if target.Output.Port == "80" {
+// 					target.Output.Target = "http://" + target.Domain
+// 				} else {
+// 					target.Output.Target = "http://" + target.Domain + ":" + target.Output.Port
+// 				}
+// 				target.Output.LastTime = time.Now().Format("2006-01-02 15:04:05")
+// 				return target.Output
+// 			}
+// 		}
+// 	} else {
+// 		if cdncheck.IPCDNCheck(target.Ip) != true { //判断IP是否存在CDN
+
+// 			// 主机存活探测
+// 			if icmp.IcmpCheckAlive("", target.Ip) || ping.PingCheckAlive(target.Ip) || httpcheck.HttpCheck(target.Domain, target.Port, target.Ip) || tcp.TcpCheckAlive(target.Ip, target.Port) {
+
+// 				// 普通端口探测
+// 				nmapbanner, err := gonmap.GoNmapScan(GoNmap, target.Ip, target.Port, target.Protocol)
+// 				if nmapbanner != nil {
+// 					target.Output.Servers = nmapbanner
+// 				}
+// 				if strings.Contains(target.Output.Servers.Banner, "HTTP") {
+// 					target.Output.Servers.Name = "http"
+// 					target.Output.Servername = "http"
+// 				} else {
+// 					target.Output.Servername = nmapbanner.Name
+// 				}
+// 				// web端口探测
+// 				webresult := result.FingerResult{}
+// 				if target.Output.Servername == "http" {
+// 					webresult = target.Request()
+// 				}
+// 				target.Output.Webbanner = webresult
+// 				target.Output.Ip = target.Ip
+// 				target.Output.Port = target.Port
+// 				target.Output.Protocol = strings.ToUpper(target.Protocol)
+// 				target.Output.Domain = ""
+
+// 				if webresult.Header != "" {
+// 					target.Output.Banner = target.Output.Webbanner.Header
+// 				} else {
+// 					target.Output.Banner = nmapbanner.Banner
+// 				}
+// 				// ip信息查询
+// 				info, err := ipinfo.GetIpinfo(region, target.Ip)
+// 				if err != nil {
+// 					log2.Warn("[GetIPInfo]:", err)
+// 				}
+// 				target.Output.City = info.City
+// 				target.Output.Region = info.Region
+// 				target.Output.ISP = info.ISP
+// 				target.Output.CityId = info.CityId
+// 				target.Output.Province = info.Province
+// 				target.Output.Country = info.Country
+// 				target.Output.TargetId = target.Ip + "-" + target.Port + "-" + target.Domain
+// 				if target.Output.Port == "80" {
+// 					target.Output.Target = "http://www." + target.Ip
+// 				} else {
+// 					target.Output.Target = "http://www." + target.Ip + ":" + target.Port
+// 				}
+// 				target.Output.LastTime = time.Now().Format("2006-01-02 15:04:05")
+// 				return target.Output
+// 			}
+// 		}
+// 	}
+// 	return nil
+// }
+
+// Scan function performs concurrent scans to quickly determine the availability of a target host
+// and then performs a detailed scan on alive hosts.
 func Scan(target *Runner, GoNmap *gonmap.VScan, region *ipinfo.Ip2Region) *result.Output {
-	// 域名存在与否
-	if target.Domain != "" {
-		// 主机存活探测
-		if icmp.IcmpCheckAlive(target.Domain, target.Ip) || httpcheck.HttpCheck(target.Domain, target.Port, target.Ip) || tcp.TcpCheckAlive(target.Ip, target.Port) {
+	output := &result.Output{}
 
-			// 普通端口探测
-			nmapbanner, err := gonmap.GoNmapScan(GoNmap, target.Ip, target.Port, target.Protocol)
-			if nmapbanner != nil {
-				target.Output.Servers = nmapbanner
-			}
-			if strings.Contains(target.Output.Servers.Banner, "HTTP") {
-				target.Output.Servers.Name = "http"
-				target.Output.Servername = "http"
-			} else {
-				target.Output.Servername = nmapbanner.Name
+	// Using a wait group to synchronize goroutines
+	var wg sync.WaitGroup
+	results := make(chan bool, 4)
 
-			}
-			// web端口探测
-			webresult := result.FingerResult{}
-			if target.Output.Servername == "http" {
-				webresult = target.Request()
-			}
-			target.Output.Webbanner = webresult
-			target.Output.Ip = target.Ip
-			target.Output.Port = target.Port
-			target.Output.Protocol = strings.ToUpper(target.Protocol)
-			target.Output.Domain = target.Domain
+	// Perform ICMP, Ping, HTTP, and TCP checks in parallel
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		results <- icmp.IcmpCheckAlive(target.Domain, target.Ip)
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		results <- ping.PingCheckAlive(target.Ip)
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		results <- httpcheck.HttpCheck(target.Domain, target.Port, target.Ip)
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		results <- tcp.TcpCheckAlive(target.Ip, target.Port)
+	}()
 
-			if webresult.Header != "" {
-				target.Output.Banner = target.Output.Webbanner.Header
-			} else {
-				target.Output.Banner = nmapbanner.Banner
-			}
-			// ip信息查询
-			info, err := ipinfo.GetIpinfo(region, target.Ip)
-			if err != nil {
-				log2.Warn("[GetIPInfo]:", err)
-			}
-			target.Output.City = info.City
-			target.Output.Region = info.Region
-			target.Output.ISP = info.ISP
-			target.Output.CityId = info.CityId
-			target.Output.Province = info.Province
-			target.Output.Country = info.Country
-			target.Output.TargetId = target.Ip + "-" + target.Port + "-" + target.Domain
-			if target.Output.Port == "80" {
-				target.Output.Target = "http://" + target.Domain
-			} else {
-				target.Output.Target = "http://" + target.Domain + ":" + target.Output.Port
-			}
-			target.Output.LastTime = time.Now().Format("2006-01-02 15:04:05")
-			return target.Output
-		} else {
-			return nil
-		}
-	} else {
-		if cdncheck.IPCDNCheck(target.Ip) != true { //判断IP是否存在CDN
+	// Wait for all checks to complete
+	wg.Wait()
+	close(results)
 
-			// 主机存活探测
-			if icmp.IcmpCheckAlive("", target.Ip) || httpcheck.HttpCheck(target.Domain, target.Port, target.Ip) || tcp.TcpCheckAlive(target.Ip, target.Port) {
-
-				// 普通端口探测
-				nmapbanner, err := gonmap.GoNmapScan(GoNmap, target.Ip, target.Port, target.Protocol)
-				if nmapbanner != nil {
-					target.Output.Servers = nmapbanner
-				}
-				if strings.Contains(target.Output.Servers.Banner, "HTTP") {
-					target.Output.Servers.Name = "http"
-					target.Output.Servername = "http"
-				} else {
-					target.Output.Servername = nmapbanner.Name
-				}
-				// web端口探测
-				webresult := result.FingerResult{}
-				if target.Output.Servername == "http" {
-					webresult = target.Request()
-				}
-				target.Output.Webbanner = webresult
-				target.Output.Ip = target.Ip
-				target.Output.Port = target.Port
-				target.Output.Protocol = strings.ToUpper(target.Protocol)
-				target.Output.Domain = ""
-
-				if webresult.Header != "" {
-					target.Output.Banner = target.Output.Webbanner.Header
-				} else {
-					target.Output.Banner = nmapbanner.Banner
-				}
-				// ip信息查询
-				info, err := ipinfo.GetIpinfo(region, target.Ip)
-				if err != nil {
-					log2.Warn("[GetIPInfo]:", err)
-				}
-				target.Output.City = info.City
-				target.Output.Region = info.Region
-				target.Output.ISP = info.ISP
-				target.Output.CityId = info.CityId
-				target.Output.Province = info.Province
-				target.Output.Country = info.Country
-				target.Output.TargetId = target.Ip + "-" + target.Port + "-" + target.Domain
-				if target.Output.Port == "80" {
-					target.Output.Target = "http://www." + target.Ip
-				} else {
-					target.Output.Target = "http://www." + target.Ip + ":" + target.Port
-				}
-				target.Output.LastTime = time.Now().Format("2006-01-02 15:04:05")
-				return target.Output
-			} else {
-				return nil
-			}
+	// Evaluate results to determine if the host is alive
+	hostAlive := false
+	for result := range results {
+		if result {
+			hostAlive = true
+			break
 		}
 	}
+
+	if !hostAlive {
+		return nil // Exit early if no checks indicate the host is alive
+	}
+
+	// Proceed with a detailed Nmap scan if the host is confirmed to be alive
+	if nmapbanner, err := gonmap.GoNmapScan(GoNmap, target.Ip, target.Port, target.Protocol); err == nil {
+		output.Servers = nmapbanner
+		// nmapbanner, err := gonmap.GoNmapScan(GoNmap, target.Ip, target.Port, target.Protocol)
+		// 				if nmapbanner != nil {
+		// 					target.Output.Servers = nmapbanner
+		// 				}
+
+		// Additional details could be processed here such as HTTP fingerprinting
+		if target.Output.Servername == "http" {
+			webresult := target.Request()
+			output.Webbanner = webresult
+			if webresult.Header != "" {
+				output.Banner = webresult.Header
+			}
+		}
+
+		// Obtain IP information
+		if info, err := ipinfo.GetIpinfo(region, target.Ip); err == nil {
+			output.City = info.City
+			output.Region = info.Region
+			output.ISP = info.ISP
+			output.CityId = info.CityId
+			output.Province = info.Province
+			output.Country = info.Country
+		} else {
+			log.Printf("Error obtaining IP info: %v", err)
+		}
+
+		// Prepare final output details
+		output.Ip = target.Ip
+		output.Port = target.Port
+		output.Protocol = target.Protocol
+		output.Domain = target.Domain
+		output.LastTime = result.FormatTimeNow()
+		return output
+	} else {
+		log.Printf("Error performing Nmap scan: %v", err)
+	}
+
 	return nil
 }
+
+// 为了提高 runner.go 中 Scan 功能的扫描效率，请考虑以下优化：
+
+// 并行化扫描操作：利用 goroutines 并行执行 ICMP、Ping、HTTP 和 TCP 检查，而不是按顺序执行。这可以大大减少等待每次检查完成所花费的时间。
+
+// 减少冗余扫描：实现逻辑以避免多次执行相同类型的扫描。例如，如果 ICMP 检查确定主机已关闭，请跳过后续的 Ping、HTTP 和 TCP 检查。
+
+// 集成缓存：缓存以前扫描的结果，以避免在短时间内重复扫描相同的目标。这对于经常扫描的目标特别有用。
+
+// 优化 Nmap 参数：通过减少重试次数、将扫描限制为更少的端口或使用更激进的时序选项，自定义 Nmap 扫描参数以专注于速度。
+
+// 基于条件的选择性扫描：实现条件逻辑以仅执行详细的 Nmap 扫描
