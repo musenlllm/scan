@@ -43,3 +43,4 @@ func MasscanCheckAlive(host string, port string) bool {
 安全和法律考虑: 使用 masscan 执行大规模扫描之前，确保你有权限扫描目标网络，避免违反法律规定或道德标准。
 
 通过这种方式，你可以显著提高检测网络中开放端口的效率。如果你需要进一步的功能或配置 masscan 的更多选项，可以查看其官方文档或扩展 MasscanCheckAlive 函数以满足你的具体需求。
+sk-DDfSVhaY4BtGAvgL3eAb3a44C6154d6d9252090625Cc4563
