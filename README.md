@@ -1,4 +1,4 @@
-https://2iq29p.aitianhu1.top/#/chat/1002
+
 确实，使用 masscan 可以提高主机存活和端口开放检测的速度，因为它被设计用来在非常短的时间内完成大范围网络的扫描。masscan 能以极高的速度发送数据包，因此它比传统的 nmap 或简单的 TcpCheckAlive 函数更适合于快速扫描大量端口。
 
 以下是如何将原有的 TcpCheckAlive 函数替换为使用 masscan 的代码实现，你可以创建一个新的 masscan.go 文件在 pkg/tcp 包下：
